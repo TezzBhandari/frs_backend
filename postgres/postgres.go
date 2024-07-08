@@ -142,3 +142,24 @@ func (db *DB) migrateFile(name string) error {
 
 	return tx.Commit(ctx)
 }
+
+type Tx struct {
+	pgx.Tx
+	db  *DB
+	Now time.Time
+}
+
+func (db *DB) BeginTx(ctx context.Context, txOpts *pgx.TxOptions) (*Tx, error) {
+	tx, err := db.db.BeginTx(ctx, *txOpts)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tx{
+		db:  db,
+		Tx:  tx,
+		Now: db.Now().UTC().Truncate(time.Second),
+	}, nil
+
+}
