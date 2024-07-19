@@ -2,7 +2,7 @@ version: "3.10"
 
 services:
   postgres:
-    container_name: rfs-postgres-db
+    container_name: frs-postgres-db
     restart: always
     image: postgres:16.2-alpine3.19
     ports:
@@ -10,25 +10,25 @@ services:
     environment:
       - POSTGRES_PASSWORD=password
     volumes:
-      - rfs-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     networks:
-      - rfs-network
+      - frs-network
 
   adminer:
-    container_name: rfs-postgres-dashboard
+    container_name: frs-postgres-dashboard
     image: adminer
     restart: always
     ports:
       - 8080:8080
     networks:
-      - rfs-network
+      - frs-network
     depends_on:
       - postgres
 
 volumes:
-  rfs-data:
+  postgres-data:
     driver: local
 
 networks:
-  rfs-network:
+  frs-network:
     driver: bridge
