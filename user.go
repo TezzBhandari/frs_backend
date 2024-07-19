@@ -2,6 +2,7 @@ package frs
 
 import (
 	"context"
+	"regexp"
 	"time"
 )
 
@@ -22,8 +23,16 @@ func (u *User) Validate() error {
 		return Errorf(EBADREQUEST, "email required")
 	}
 
+	if validEmail(u.Email) {
+		return Errorf(EBADREQUEST, "invalid email")
+	}
+
 	if u.Password == "" {
 		return Errorf(EBADREQUEST, "password required")
+	}
+
+	if len(u.Password) < 8 {
+		return Errorf(EBADREQUEST, "password should be at least 8 character long")
 	}
 
 	return nil
@@ -47,3 +56,15 @@ type UserService interface {
 	// return NOTFOUND | UNAUTHORIZED Error
 	FindUser(ctx context.Context, filter *FilterUser) ([]*User, int, error)
 }
+
+func validEmail(email string) bool {
+	emailRegex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
+	re := regexp.MustCompile(emailRegex)
+	return re.MatchString(email)
+}
+
+// func validPassword(password string) bool {
+// 	passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$`
+// 	re := regexp.MustCompile(passwordRegex)
+// 	return re.MatchString(password)
+// }

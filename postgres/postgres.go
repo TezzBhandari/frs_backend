@@ -7,15 +7,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/jackc/pgx/v5"
 )
 
 type DB struct {
-	db     *pgx.Conn
-	DSN    string
-	Now    func() time.Time
-	ctx    context.Context
-	cancel func()
+	db        *pgx.Conn
+	DSN       string
+	Now       func() time.Time
+	ctx       context.Context
+	cancel    func()
+	snowflake *snowflake.Node
 }
 
 func NewDB(dsn string) *DB {
@@ -33,12 +35,21 @@ func (db *DB) Open() error {
 	if db.DSN == "" {
 		return fmt.Errorf("dsn required")
 	}
+
+	db.snowflake, err = snowflake.NewNode(1)
+
+	if err != nil {
+		return err
+	}
+
 	db.db, err = pgx.Connect(db.ctx, db.DSN)
+
 	if err != nil {
 		return err
 	}
 
 	err = db.Migrate()
+
 	if err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}

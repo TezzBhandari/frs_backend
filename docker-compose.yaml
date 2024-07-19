@@ -1,0 +1,34 @@
+version: "3.10"
+
+services:
+  postgres:
+    container_name: rfs-postgres-db
+    restart: always
+    image: postgres:16.2-alpine3.19
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - rfs-data:/var/lib/postgresql/data
+    networks:
+      - rfs-network
+
+  adminer:
+    container_name: rfs-postgres-dashboard
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - rfs-network
+    depends_on:
+      - postgres
+
+volumes:
+  rfs-data:
+    driver: local
+
+networks:
+  rfs-network:
+    driver: bridge

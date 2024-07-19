@@ -51,6 +51,7 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 	}
 
 	user.CreatedAt = tx.Now
+	user.ID = tx.db.snowflake.Generate().Int64()
 
 	insertUserQuery := `
 		INSERT INTO users (
