@@ -50,8 +50,8 @@ type UserUpdate struct {
 }
 
 type FilterUser struct {
-	Name  *string `json:"name"`
-	Email *string `json:"email"`
+	Username *string `json:"username"`
+	Email    *string `json:"email"`
 }
 
 type UserService interface {

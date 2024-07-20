@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/TezzBhandari/frs"
 	"github.com/jackc/pgx/v5"
@@ -43,14 +45,14 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, upd frs.UserUpdate
 }
 
 // return NOTFOUND | UNAUTHORIZED Error
-func (s *UserService) FindUsers(ctx context.Context, filter *frs.FilterUser) ([]*frs.User, int, error) {
+func (s *UserService) FindUsers(ctx context.Context, filterUser *frs.FilterUser) ([]*frs.User, int, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, 0, err
 	}
 	defer tx.Rollback(ctx)
 
-	users, n, err := findUsers(ctx, tx, filter)
+	users, n, err := findUsers(ctx, tx, filterUser)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -87,15 +89,36 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 }
 
 func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.User, int, error) {
-	var users []*frs.User
-	var user frs.User
-	findUserQuery := `SELECT id, username, email, created_at FROM users`
-	rows, err := tx.Query(ctx, findUserQuery)
+	where := []string{"1 = 1"}
+	args := []any{}
+	var i int = 1
+
+	if filterUser.Username != nil {
+		where = append(where, fmt.Sprintf("username = $%d", i))
+		args = append(args, *filterUser.Username)
+		i++
+	}
+
+	if filterUser.Email != nil {
+		where = append(where, fmt.Sprintf("email = $%d", i))
+		args = append(args, *filterUser.Email)
+		i++
+	}
+
+	whereClause := strings.Join(where, " AND ")
+	findUserQuery := `SELECT id, username, email, created_at FROM users WHERE ` + whereClause
+
+	log.Debug().Msg(findUserQuery)
+
+	rows, err := tx.Query(ctx, findUserQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	defer rows.Close()
+
+	var users []*frs.User
+	var user frs.User
 
 	for rows.Next() {
 		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
