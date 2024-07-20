@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -17,7 +18,9 @@ type Server struct {
 	router *mux.Router
 	Addr   string
 
-	userService frs.UserService
+	ln net.Listener
+
+	UserService frs.UserService
 }
 
 func NewHttpServer() *Server {
@@ -35,7 +38,7 @@ func NewHttpServer() *Server {
 	s.server.Handler = s.router
 
 	s.router.NotFoundHandler = s.handleNotFound()
-	router := s.router.PathPrefix("/").Subrouter()
+	router := s.router.PathPrefix("/api/v1").Subrouter()
 
 	s.registerUserRoutes(router)
 
@@ -43,27 +46,53 @@ func NewHttpServer() *Server {
 }
 
 func (s *Server) Open() error {
+	var err error
 	if s.Addr == "" {
 		return fmt.Errorf("addr required")
 	}
 	s.server.Addr = s.Addr
-	return s.server.ListenAndServe()
+
+	if s.ln, err = net.Listen("tcp", s.Addr); err != nil {
+		return err
+	}
+
+	// Begin serving requests on the listener. We use Serve() instead of
+	// ListenAndServe() because it allows us to check for listen errors (such
+	// as trying to use an already open port) synchronously.
+	go s.server.Serve(s.ln)
+
+	return nil
 }
 
 func (s *Server) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	defer func() {
+		defer cancel()
+		defer log.Info().Msg("server gracefully shutdown")
+	}()
 	return s.server.Shutdown(ctx)
 }
 
 func (s *Server) handleNotFound() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusNotFound)
 		err := json.NewEncoder(rw).Encode(ErrorMessage{Error: "path not found"})
 		if err != nil {
-			fmt.Printf("failed to write response: %q", err)
+			log.Error().Err(fmt.Errorf("failed to write response %w", err)).Msg("")
 		}
 	})
+}
+
+func (s *Server) Url() string {
+	return fmt.Sprintf("http://localhost:%d", s.Port())
+}
+
+func (s *Server) Port() int {
+	if s.ln == nil {
+		return 0
+	}
+	return s.ln.Addr().(*net.TCPAddr).Port
 }
 
 // middleware catches panics and reports to external service
@@ -98,6 +127,7 @@ type ErrorMessage struct {
 
 var codes = map[string]int{
 	frs.EBADREQUEST: http.StatusBadRequest,
+	frs.EINVALID:    http.StatusBadRequest,
 	frs.EINTERNAL:   http.StatusInternalServerError,
 }
 

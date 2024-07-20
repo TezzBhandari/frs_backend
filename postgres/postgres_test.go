@@ -8,7 +8,7 @@ import (
 )
 
 func TestReadMigrationDir(t *testing.T) {
-	expected := []string{"01.sql", "02.sql"}
+	expected := []string{"user.sql"}
 	got, err := p.ReadMigrationDir("migrations", "sql")
 	if err != nil {
 		t.Errorf("got: %q, want: %q, error: %q", got, expected, err)

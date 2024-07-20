@@ -32,6 +32,7 @@ func NewDB(dsn string) *DB {
 
 func (db *DB) Open() error {
 	var err error
+
 	if db.DSN == "" {
 		return fmt.Errorf("dsn required")
 	}
@@ -53,9 +54,7 @@ func (db *DB) Open() error {
 	if err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
-
 	return nil
-
 }
 
 func (db *DB) Close() error {
@@ -67,7 +66,6 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) Migrate() error {
-
 	migrationTableQuery := `
 		CREATE TABLE IF NOT EXISTS migrations (
 			name VARCHAR(100) PRIMARY KEY
@@ -78,13 +76,29 @@ func (db *DB) Migrate() error {
 		return fmt.Errorf("cannot create migrations table: %w", err)
 	}
 
-	names, err := ReadMigrationDir("migrations", "sql")
+	path, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	path += "/postgres/migrations"
+	info, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return fmt.Errorf("%s path does not exist", path)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", path)
+	}
+
+	names, err := ReadMigrationDir(path, "sql")
 	if err != nil {
 		return err
 	}
 
 	if len(names) == 0 {
-		return fmt.Errorf("not sql files found")
+		return fmt.Errorf("no sql files found")
 	}
 
 	for _, name := range names {
@@ -132,10 +146,17 @@ func (db *DB) migrateFile(name string) error {
 	}
 
 	if n != 0 {
-		return nil // migration alreay applied, skip
+		return nil // migration already applied, skip
 	}
 
-	buf, err := os.ReadFile(name)
+	path, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	path += "/postgres/migrations/" + name
+
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -160,8 +181,8 @@ type Tx struct {
 	Now time.Time
 }
 
-func (db *DB) BeginTx(ctx context.Context, txOpts *pgx.TxOptions) (*Tx, error) {
-	tx, err := db.db.BeginTx(ctx, *txOpts)
+func (db *DB) BeginTx(ctx context.Context, txOpts pgx.TxOptions) (*Tx, error) {
+	tx, err := db.db.BeginTx(ctx, txOpts)
 
 	if err != nil {
 		return nil, err

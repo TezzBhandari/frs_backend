@@ -2,6 +2,8 @@ package frs
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"regexp"
 	"time"
 )
@@ -12,6 +14,10 @@ type User struct {
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+func (u *User) FromJson(v io.ReadCloser) error {
+	return json.NewDecoder(v).Decode(u)
 }
 
 func (u *User) Validate() error {

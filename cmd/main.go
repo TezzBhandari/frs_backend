@@ -24,6 +24,8 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "Sets log level flag to default")
 	flag.StringVar(&dsn, "dsn", "", "Sets database dsn")
 
+	flag.Parse()
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if debug {
@@ -41,8 +43,6 @@ func init() {
 		os.Exit(1)
 	}
 
-	flag.Parse()
-
 }
 
 func main() {
@@ -57,14 +57,19 @@ func main() {
 
 	m := NewMain()
 	if err := m.run(); err != nil {
-		fmt.Printf("[Error]: %q", err)
-		m.close()
+		log.Error().Err(err).Msg("")
+		if err = m.close(); err != nil {
+			log.Error().Err(err).Msg("")
+		}
+		os.Exit(1)
 	}
 
 	<-ctx.Done()
 
+	log.Info().Msg("interrupt triggered")
+
 	if err := m.close(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 
@@ -78,7 +83,7 @@ type Main struct {
 func NewMain() *Main {
 	return &Main{
 		HttpServer: http.NewHttpServer(),
-		DB:         postgres.NewDB(""),
+		DB:         postgres.NewDB(dsn),
 	}
 }
 
@@ -89,9 +94,17 @@ func (m *Main) run() error {
 		return fmt.Errorf("cannot open db: %w", err)
 	}
 
+	userService := postgres.NewUserService(m.DB)
+
+	// attach underlying services to http server
+	m.HttpServer.UserService = userService
+
 	if err := m.HttpServer.Open(); err != nil {
-		return fmt.Errorf("cannot start server: %2w", err)
+		return fmt.Errorf("cannot start server: %w", err)
 	}
+
+	fmt.Printf("running: url=%q dsn=%q\n", m.HttpServer.Url(), dsn)
+
 	return nil
 
 }

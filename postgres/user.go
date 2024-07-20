@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/TezzBhandari/frs"
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
 )
 
 var _ frs.UserService = (*UserService)(nil)
@@ -19,7 +21,8 @@ func NewUserService(db *DB) *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, user *frs.User) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	// don't use pointer for txOptions to make it optional, does not return a transation
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -45,6 +48,7 @@ func (s *UserService) FindUser(ctx context.Context, filter *frs.FilterUser) ([]*
 }
 
 func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
+	log.Debug().Msg("reached created user")
 	err := user.Validate()
 	if err != nil {
 		return err

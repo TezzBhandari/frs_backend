@@ -1,29 +1,31 @@
 package http
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/TezzBhandari/frs"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 func (s *Server) registerUserRoutes(r *mux.Router) {
-	r.PathPrefix("/users").Subrouter()
-	// userRouter :=  r.PathPrefix("/users").SubRouter()
-	r.HandleFunc("/", s.handleCreateUser).Methods(http.MethodGet)
+	r.HandleFunc("/users", s.handleCreateUser).Methods(http.MethodPost)
 
 }
 
 func (s *Server) handleCreateUser(rw http.ResponseWriter, r *http.Request) {
-	var user *frs.User
+	user := &frs.User{}
 
-	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+	if err := user.FromJson(r.Body); err != nil {
+		log.Error().Err(err).Msg("")
 		Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
 		return
 	}
 
-	if err := s.userService.CreateUser(r.Context(), user); err != nil {
+	log.Debug().Msg(fmt.Sprintf("%v", user))
+
+	if err := s.UserService.CreateUser(r.Context(), user); err != nil {
 		Error(rw, r, err)
 		return
 	}
