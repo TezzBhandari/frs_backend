@@ -9,10 +9,11 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DB struct {
-	db        *pgx.Conn
+	db        *pgxpool.Pool
 	DSN       string
 	Now       func() time.Time
 	ctx       context.Context
@@ -43,7 +44,7 @@ func (db *DB) Open() error {
 		return err
 	}
 
-	db.db, err = pgx.Connect(db.ctx, db.DSN)
+	db.db, err = pgxpool.New(db.ctx, db.DSN)
 
 	if err != nil {
 		return err
@@ -60,7 +61,7 @@ func (db *DB) Open() error {
 func (db *DB) Close() error {
 	defer db.cancel()
 	if db.db != nil {
-		return db.db.Close(db.ctx)
+		db.db.Close()
 	}
 	return nil
 }

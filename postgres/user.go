@@ -95,6 +95,8 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 		return nil, 0, err
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
 			return nil, 0, err
