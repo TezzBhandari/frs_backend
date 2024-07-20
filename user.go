@@ -12,7 +12,7 @@ type User struct {
 	ID        int64     `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
-	Password  string    `json:"password"`
+	Password  string    `json:"password,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -60,7 +60,7 @@ type UserService interface {
 	FindUserById(ctx context.Context, id int) (*User, error)
 	UpdateUser(ctx context.Context, id int, upd UserUpdate) (*User, error)
 	// return NOTFOUND | UNAUTHORIZED Error
-	FindUser(ctx context.Context, filter *FilterUser) ([]*User, int, error)
+	FindUsers(ctx context.Context, filter *FilterUser) ([]*User, int, error)
 }
 
 func validEmail(email string) bool {

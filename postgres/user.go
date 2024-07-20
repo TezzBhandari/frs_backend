@@ -43,8 +43,18 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, upd frs.UserUpdate
 }
 
 // return NOTFOUND | UNAUTHORIZED Error
-func (s *UserService) FindUser(ctx context.Context, filter *frs.FilterUser) ([]*frs.User, int, error) {
-	return nil, 0, nil
+func (s *UserService) FindUsers(ctx context.Context, filter *frs.FilterUser) ([]*frs.User, int, error) {
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	users, n, err := findUsers(ctx, tx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	return users, n, nil
 }
 
 func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
@@ -74,4 +84,26 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 	}
 
 	return nil
+}
+
+func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.User, int, error) {
+	var users []*frs.User
+	var user frs.User
+	findUserQuery := `SELECT id, username, email, created_at FROM users`
+	rows, err := tx.Query(ctx, findUserQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for rows.Next() {
+		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, &user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return users, len(users), nil
 }
