@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/TezzBhandari/frs"
@@ -20,9 +21,15 @@ func (s *Server) handleCreateUser(rw http.ResponseWriter, r *http.Request) {
 	user := &frs.User{}
 
 	if err := user.FromJson(r.Body); err != nil {
-		log.Error().Err(err).Msg("")
-		Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
-		return
+		switch err {
+		case io.EOF:
+			break
+		default:
+			log.Error().Err(err).Msg("")
+			Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
+			return
+
+		}
 	}
 
 	log.Debug().Msg(fmt.Sprintf("%v", user))
@@ -40,8 +47,15 @@ func (s *Server) handleFindUsers(rw http.ResponseWriter, r *http.Request) {
 	userFilter := &frs.FilterUser{}
 
 	if err := json.NewDecoder(r.Body).Decode(userFilter); err != nil {
-		Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
-		return
+		switch err {
+		// client didn't send request body
+		case io.EOF:
+			break
+		// client sent invalid json body
+		default:
+			Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
+			return
+		}
 	}
 
 	users, _, err := s.UserService.FindUsers(r.Context(), userFilter)
@@ -53,7 +67,11 @@ func (s *Server) handleFindUsers(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(rw).Encode(users)
+	err = json.NewEncoder(rw).Encode(SuccessMessage{
+		Data: map[string]any{
+			"users": users,
+		},
+	})
 	if err != nil {
 		log.Error().Err(fmt.Errorf("failed to write response %w", err)).Msg("")
 	}

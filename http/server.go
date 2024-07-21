@@ -34,6 +34,7 @@ func NewHttpServer() *Server {
 	}
 
 	s.router.Use(reportPanic)
+	s.router.Use(trackMetrics)
 
 	s.server.Handler = s.router
 
@@ -108,6 +109,15 @@ func reportPanic(next http.Handler) http.Handler {
 	})
 }
 
+func trackMetrics(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		t := time.Now()
+		next.ServeHTTP(rw, r)
+		timeTaken := float64(time.Since(t).Seconds())
+		log.Info().Float64("request time", timeTaken).Str("method", r.Method).Str("path", r.RequestURI).Str("remote address", r.RemoteAddr).Msg("")
+	})
+}
+
 func Error(rw http.ResponseWriter, r *http.Request, err error) {
 	log.Error().Err(err).Msg("")
 
@@ -123,6 +133,10 @@ func Error(rw http.ResponseWriter, r *http.Request, err error) {
 
 type ErrorMessage struct {
 	Error string `json:"error"`
+}
+
+type SuccessMessage struct {
+	Data map[string]any `json:"data"`
 }
 
 var codes = map[string]int{
