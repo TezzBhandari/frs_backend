@@ -35,8 +35,6 @@ func (s *Server) handleCreateUser(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Debug().Msg(fmt.Sprintf("%v", user))
-
 	if err := s.UserService.CreateUser(r.Context(), user); err != nil {
 		Error(rw, r, err)
 		return
@@ -148,6 +146,7 @@ func (s *Server) handleUpdateUser(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	user, err := s.UserService.UpdateUser(r.Context(), userId, *updateUser)
 	if err != nil {
 		Error(rw, r, err)

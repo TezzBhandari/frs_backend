@@ -13,6 +13,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// NullTime represents a helper wrapper for time.Time. It automatically converts
+// time fields to/from RFC 3339 format. Also supports NULL for zero time.
+type NullTime time.Time
+
 type DB struct {
 	db        *pgxpool.Pool
 	DSN       string

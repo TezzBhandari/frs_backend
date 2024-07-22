@@ -7,7 +7,6 @@ import (
 
 	"github.com/TezzBhandari/frs"
 	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog/log"
 )
 
 var _ frs.UserService = (*UserService)(nil)
@@ -28,11 +27,6 @@ func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	_, err = findUserById(ctx, tx, id)
-
-	if err != nil {
-		return err
-	}
 
 	err = deleteUser(ctx, tx, id)
 
@@ -78,24 +72,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int64, updUser frs.Upda
 	}
 	defer tx.Rollback(ctx)
 
-	user, err := findUserById(ctx, tx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	if *updUser.Email == "" {
-		updUser.Email = &user.Email
-
-	}
-
-	if *updUser.Username == "" {
-		updUser.Username = &user.Username
-
-	}
-
-	// TODO: user can only edit only it info. right now any one can edit based on user id
-
-	user, err = updateUser(ctx, tx, id, updUser)
+	user, err := updateUser(ctx, tx, id, updUser)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +106,7 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 	}
 
 	user.CreatedAt = tx.Now
+	user.UpdatedAt = user.CreatedAt
 	user.ID = int64(tx.db.snowflake.Generate().Int64())
 	insertUserQuery := `
 		INSERT INTO users (
@@ -136,12 +114,13 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 			username,
 			email,
 			password,
-			created_at
+			created_at,
+			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5);
+		VALUES ($1, $2, $3, $4, $5, $6);
 	`
 
-	_, err = tx.Exec(ctx, insertUserQuery, user.ID, user.Username, user.Email, user.Password, user.CreatedAt)
+	_, err = tx.Exec(ctx, insertUserQuery, user.ID, user.Username, user.Email, user.Password, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -175,10 +154,8 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 	whereClause := strings.Join(where, " AND ")
 	findUserQuery := `
 	SELECT 
-	id, username, email, created_at
+	id, username, email, created_at, updated_at
 	FROM users WHERE ` + whereClause
-
-	log.Debug().Msg(findUserQuery)
 
 	rows, err := tx.Query(ctx, findUserQuery, args...)
 	if err != nil {
@@ -191,7 +168,7 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 	var user frs.User
 
 	for rows.Next() {
-		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
+		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
 		users = append(users, &user)
@@ -216,8 +193,14 @@ func findUserById(ctx context.Context, tx *Tx, id int64) (*frs.User, error) {
 }
 
 func deleteUser(ctx context.Context, tx *Tx, id int64) error {
+	_, err := findUserById(ctx, tx, id)
+
+	if err != nil {
+		return err
+	}
+
 	deleteUserQuery := `DELETE FROM users WHERE  id = $1`
-	_, err := tx.Exec(ctx, deleteUserQuery, id)
+	_, err = tx.Exec(ctx, deleteUserQuery, id)
 	if err != nil {
 		return err
 	}
@@ -225,17 +208,32 @@ func deleteUser(ctx context.Context, tx *Tx, id int64) error {
 }
 
 func updateUser(ctx context.Context, tx *Tx, id int64, updateUser frs.UpdateUser) (*frs.User, error) {
+
+	user, err := findUserById(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if v := updateUser.Email; v != nil {
+		user.Email = *v
+	}
+
+	if v := updateUser.Username; v != nil {
+		user.Username = *v
+	}
+
+	user.UpdatedAt = tx.Now
+
+	// TODO: user can only edit only it info. right now any one can edit based on user id
+
 	updateUserQuery := `
 	UPDATE users
 	SET username = $1, email = $2, updated_at = $3
 	WHERE id = $4;
 	`
-	pgTag, err := tx.Exec(ctx, updateUserQuery, *updateUser.Username, *updateUser.Email, tx.Now, id)
+	_, err = tx.Exec(ctx, updateUserQuery, user.Username, user.Email, user.UpdatedAt, id)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(pgTag)
-
-	return nil, nil
+	return user, nil
 }
