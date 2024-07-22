@@ -140,9 +140,11 @@ type SuccessMessage struct {
 }
 
 var codes = map[string]int{
-	frs.EBADREQUEST: http.StatusBadRequest,
-	frs.EINVALID:    http.StatusBadRequest,
-	frs.EINTERNAL:   http.StatusInternalServerError,
+	frs.EBADREQUEST:   http.StatusBadRequest,
+	frs.EINVALID:      http.StatusBadRequest,
+	frs.EINTERNAL:     http.StatusInternalServerError,
+	frs.ENOTFOUND:     http.StatusNotFound,
+	frs.EUNAUTHORIZED: http.StatusUnauthorized,
 }
 
 func ErrorStatusCode(code string) int {

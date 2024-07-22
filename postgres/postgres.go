@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 )
 
 type DB struct {
@@ -69,7 +70,8 @@ func (db *DB) Close() error {
 func (db *DB) Migrate() error {
 	migrationTableQuery := `
 		CREATE TABLE IF NOT EXISTS migrations (
-			name VARCHAR(100) PRIMARY KEY
+			name VARCHAR(100) PRIMARY KEY,
+			size INTEGER NOT NULL
 		)
 	`
 	_, err := db.db.Exec(db.ctx, migrationTableQuery)
@@ -131,7 +133,7 @@ func ReadMigrationDir(dirName, ext string) ([]string, error) {
 	return files, nil
 }
 
-func (db *DB) migrateFile(name string) error {
+func (db *DB) migrateFile(filename string) error {
 	ctx := context.Background()
 	tx, err := db.db.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
@@ -139,15 +141,19 @@ func (db *DB) migrateFile(name string) error {
 		return err
 	}
 
-	selectMigration := `SELECT COUNT(*) FROM migrations where name = $1`
+	selectMigration := `SELECT name, size, COUNT(name) AS n FROM migrations WHERE name = $1 GROUP BY name;`
+	var name string
+	var size int
 	var n int
-	err = tx.QueryRow(ctx, selectMigration, name).Scan(&n)
+	err = tx.QueryRow(ctx, selectMigration, filename).Scan(&name, &size, &n)
 	if err != nil {
-		return fmt.Errorf("QueryRow failed: %w", err)
-	}
+		switch err {
+		case pgx.ErrNoRows:
+			log.Info().Msg(fmt.Sprintf("migration file %s is not applied", filename))
+		default:
+			return fmt.Errorf("QueryRow failed: %w", err)
+		}
 
-	if n != 0 {
-		return nil // migration already applied, skip
 	}
 
 	path, err := os.Getwd()
@@ -155,22 +161,38 @@ func (db *DB) migrateFile(name string) error {
 		return err
 	}
 
-	path += "/postgres/migrations/" + name
+	path += "/postgres/migrations/" + filename
 
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(ctx, string(buf))
-	if err != nil {
-		return err
-	}
+	if n == 0 {
+		_, err = tx.Exec(ctx, string(buf))
+		if err != nil {
+			return err
+		}
 
-	insertMigrationQuery := `INSERT INTO migrations(name) VALUES($1)`
-	_, err = tx.Exec(ctx, insertMigrationQuery, name)
-	if err != nil {
-		return err
+		insertMigrationQuery := `INSERT INTO migrations(name, size) VALUES($1, $2)`
+		_, err = tx.Exec(ctx, insertMigrationQuery, filename, len(buf))
+		if err != nil {
+			return err
+		}
+	} else if n != 0 && size == len(buf) {
+		log.Info().Msg(fmt.Sprintf("migration file %s already applied", name))
+		return nil // migration already applied, skip
+	} else {
+		_, err = tx.Exec(ctx, string(buf))
+		if err != nil {
+			return err
+		}
+
+		insertMigrationQuery := `UPDATE migrations SET size = $1 WHERE  name = $2;`
+		_, err = tx.Exec(ctx, insertMigrationQuery, len(buf), filename)
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit(ctx)
