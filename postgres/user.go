@@ -7,6 +7,7 @@ import (
 
 	"github.com/TezzBhandari/frs"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var _ frs.UserService = (*UserService)(nil)
@@ -105,6 +106,12 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 		return err
 	}
 
+	// password should be no more than 72 bytes
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
+	if err != nil {
+		return err
+	}
+
 	user.CreatedAt = tx.Now
 	user.UpdatedAt = user.CreatedAt
 	user.ID = int64(tx.db.snowflake.Generate().Int64())
@@ -120,9 +127,9 @@ func createUser(ctx context.Context, tx *Tx, user *frs.User) error {
 		VALUES ($1, $2, $3, $4, $5, $6);
 	`
 
-	_, err = tx.Exec(ctx, insertUserQuery, user.ID, user.Username, user.Email, user.Password, user.CreatedAt, user.UpdatedAt)
+	_, err = tx.Exec(ctx, insertUserQuery, user.ID, user.Username, user.Email, passwordHash, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
-		return err
+		return formatError(err)
 	}
 
 	return nil
@@ -165,9 +172,9 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 	defer rows.Close()
 
 	var users []*frs.User
-	var user frs.User
 
 	for rows.Next() {
+		var user frs.User
 		if err = rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, 0, err
 		}

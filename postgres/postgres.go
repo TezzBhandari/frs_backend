@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TezzBhandari/frs"
 	"github.com/bwmarrin/snowflake"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -221,4 +222,15 @@ func (db *DB) BeginTx(ctx context.Context, txOpts pgx.TxOptions) (*Tx, error) {
 		Now: db.Now().UTC().Truncate(time.Second),
 	}, nil
 
+}
+
+func formatError(err error) error {
+	switch err.Error() {
+	case "ERROR: duplicate key value violates unique constraint \"users_username_key\" (SQLSTATE 23505)":
+		return frs.Errorf(frs.EBADREQUEST, "username already exists")
+	case "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)":
+		return frs.Errorf(frs.EBADREQUEST, "email already exists")
+	default:
+		return err
+	}
 }
