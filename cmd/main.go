@@ -95,9 +95,11 @@ func (m *Main) run() error {
 	}
 
 	userService := postgres.NewUserService(m.DB)
+	fundRaiserService := postgres.NewFundRaiserService(m.DB)
 
 	// attach underlying services to http server
 	m.HttpServer.UserService = userService
+	m.HttpServer.FundRaiserService = fundRaiserService
 
 	if err := m.HttpServer.Open(); err != nil {
 		return fmt.Errorf("cannot start server: %w", err)

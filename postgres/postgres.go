@@ -234,3 +234,18 @@ func formatError(err error) error {
 		return err
 	}
 }
+
+func formatLimitAndOffset(limit, offset int) string {
+	if limit > 0 && offset > 0 {
+		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
+	}
+
+	if limit > 0 {
+		return fmt.Sprintf("LIMIT %d", limit)
+	}
+
+	if offset > 0 {
+		return fmt.Sprintf("OFFSET %d", offset)
+	}
+	return ""
+}

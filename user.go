@@ -58,9 +58,12 @@ type UpdateUser struct {
 // }
 
 type FilterUser struct {
-	Id       *int64  `json:"id"`
+	ID       *int64  `json:"id"`
 	Username *string `json:"username"`
 	Email    *string `json:"email"`
+
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
 }
 
 type UserService interface {

@@ -92,6 +92,13 @@ func (s *UserService) FindUsers(ctx context.Context, filterUser *frs.FilterUser)
 		return nil, 0, err
 	}
 	defer tx.Rollback(ctx)
+	// apiKey := make([]byte, 32)
+	// _, err = io.ReadFull(rand.Reader, apiKey)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+
+	// fmt.Println(hex.EncodeToString(apiKey))
 
 	users, n, err := findUsers(ctx, tx, filterUser)
 	if err != nil {
@@ -152,9 +159,9 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 		i++
 	}
 
-	if filterUser.Id != nil {
+	if filterUser.ID != nil {
 		where = append(where, fmt.Sprintf("id = $%d", i))
-		args = append(args, filterUser.Id)
+		args = append(args, filterUser.ID)
 		i++
 	}
 
@@ -162,7 +169,10 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 	findUserQuery := `
 	SELECT 
 	id, username, email, created_at, updated_at
-	FROM users WHERE ` + whereClause
+	FROM users WHERE ` + whereClause +
+		` ORDER BY created_at DESC
+	` +
+		formatLimitAndOffset(filterUser.Limit, filterUser.Offset)
 
 	rows, err := tx.Query(ctx, findUserQuery, args...)
 	if err != nil {
@@ -188,7 +198,7 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 }
 
 func findUserById(ctx context.Context, tx *Tx, id int64) (*frs.User, error) {
-	user, n, err := findUsers(ctx, tx, &frs.FilterUser{Id: &id})
+	user, n, err := findUsers(ctx, tx, &frs.FilterUser{ID: &id})
 	if err != nil {
 		return nil, err
 	}

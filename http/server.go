@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/TezzBhandari/frs"
+	"github.com/TezzBhandari/frs/utils"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
@@ -20,7 +22,8 @@ type Server struct {
 
 	ln net.Listener
 
-	UserService frs.UserService
+	UserService       frs.UserService
+	FundRaiserService frs.FundRaiserService
 }
 
 func NewHttpServer() *Server {
@@ -42,6 +45,7 @@ func NewHttpServer() *Server {
 	router := s.router.PathPrefix("/api/v1").Subrouter()
 
 	s.registerUserRoutes(router)
+	s.registerFundRaiserRoutes(router)
 
 	return s
 }
@@ -152,4 +156,17 @@ func ErrorStatusCode(code string) int {
 		return v
 	}
 	return codes[frs.EINTERNAL]
+}
+
+func ReadJsonBody(body io.ReadCloser, v any) error {
+	if err := json.NewDecoder(body).Decode(v); err != nil {
+		switch err {
+		case io.EOF:
+			return nil
+		default:
+			return frs.Errorf(frs.EBADREQUEST, utils.InvalidJsonMsg())
+
+		}
+	}
+	return nil
 }
