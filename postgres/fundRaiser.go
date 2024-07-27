@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/TezzBhandari/frs"
+	"github.com/TezzBhandari/frs/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -55,15 +56,26 @@ func (fr *FundRaiserService) FindFundRaiser(ctx context.Context, filterFundRaise
 	return fundRaisers, n, nil
 }
 
-func (fr *FundRaiserService) FindFundRaiserById(ctx context.Context, id int) (*frs.FundRaiser, error) {
+func (fr *FundRaiserService) FindFundRaiserById(ctx context.Context, id int64) (*frs.FundRaiser, error) {
+	tx, err := fr.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	defer tx.Rollback(ctx)
+	log.Debug().Bool("hi ", true).Msg("")
+	fundRaiser, err := findFundRaiserById(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+	return fundRaiser, nil
+}
+
+func (fr *FundRaiserService) UpdateFundRaiser(ctx context.Context, id int64, updFundRaiser *frs.UpdateFundRaiser) (*frs.FundRaiser, error) {
 	return nil, nil
 }
 
-func (fr *FundRaiserService) UpdateFundRaiser(ctx context.Context, id int, updFundRaiser *frs.UpdateFundRaiser) (*frs.FundRaiser, error) {
-	return nil, nil
-}
-
-func (fr *FundRaiserService) DeleteFundRaiser(ctx context.Context, id int) error {
+func (fr *FundRaiserService) DeleteFundRaiser(ctx context.Context, id int64) error {
 	return nil
 }
 
@@ -116,6 +128,8 @@ func findFundRaiser(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFun
 		ORDER BY created_at DESC
 	` + formatLimitAndOffset(filterFundRaiser.Limit, filterFundRaiser.Offset)
 
+	log.Debug().Str("sql query", findFundRaiserQuery).Msg("")
+
 	rows, err := tx.Query(ctx, findFundRaiserQuery, args...)
 	if err != nil {
 		return nil, 0, err
@@ -135,4 +149,21 @@ func findFundRaiser(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFun
 	}
 
 	return fundRaisers, len(fundRaisers), nil
+}
+
+func findFundRaiserById(ctx context.Context, tx *Tx, id int64) (*frs.FundRaiser, error) {
+	log.Debug().Str("hey", "hey hey").Msg("")
+
+	fundRaiser, n, err := findFundRaiser(ctx, tx, &frs.FilterFundRaiser{ID: &id})
+	log.Debug().Bool("no err", true)
+	if err != nil {
+		log.Error().Err(err).Msg("erro while executing query")
+		return nil, err
+	}
+
+	if n == 0 {
+		return nil, frs.Errorf(frs.ENOTFOUND, utils.DoesNotExistMsg("fundraiser"))
+	}
+
+	return fundRaiser[0], nil
 }

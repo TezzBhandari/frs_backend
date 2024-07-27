@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/TezzBhandari/frs"
 	"github.com/TezzBhandari/frs/utils"
@@ -14,6 +15,7 @@ import (
 func (s *Server) registerFundRaiserRoutes(r *mux.Router) {
 	r.HandleFunc("/fund-raiser", s.handleCreateFundRaiser).Methods(http.MethodPost)
 	r.HandleFunc("/fund-raiser", s.handleFindFundRaiser).Methods(http.MethodGet)
+	r.HandleFunc("/fund-raiser/{id}", s.handleFindFundRaiserById).Methods(http.MethodGet)
 }
 
 func (s *Server) handleCreateFundRaiser(rw http.ResponseWriter, r *http.Request) {
@@ -56,4 +58,31 @@ func (s *Server) handleFindFundRaiser(rw http.ResponseWriter, r *http.Request) {
 		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 	}
 
+}
+
+func (s *Server) handleFindFundRaiserById(rw http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	userId, err := strconv.ParseInt(id, 0, 64)
+	if err != nil {
+		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidFundRaiserIdMsg()))
+		return
+	}
+
+	log.Debug().Msg("about to fetch fund rainser")
+
+	fundRaiser, err := s.FundRaiserService.FindFundRaiserById(r.Context(), userId)
+	log.Debug().Any("fund-raiser", fundRaiser).Msg("")
+	if err != nil {
+		Error(rw, r, err)
+		return
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(rw).Encode(SuccessResponse{
+		Data: map[string]any{
+			"fund-raiser": fundRaiser,
+		},
+	}); err != nil {
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
+	}
 }

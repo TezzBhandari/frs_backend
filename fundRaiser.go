@@ -34,9 +34,9 @@ type UpdateFundRaiser struct {
 type FundRaiserService interface {
 	CreateFundRaiser(ctx context.Context, FundRaiser *FundRaiser) error
 	FindFundRaiser(ctx context.Context, filterFundRaiser *FilterFundRaiser) ([]*FundRaiser, int, error)
-	FindFundRaiserById(ctx context.Context, id int) (*FundRaiser, error)
-	UpdateFundRaiser(ctx context.Context, id int, updFundRaiser *UpdateFundRaiser) (*FundRaiser, error)
-	DeleteFundRaiser(ctx context.Context, id int) error
+	FindFundRaiserById(ctx context.Context, id int64) (*FundRaiser, error)
+	UpdateFundRaiser(ctx context.Context, id int64, updFundRaiser *UpdateFundRaiser) (*FundRaiser, error)
+	DeleteFundRaiser(ctx context.Context, id int64) error
 }
 
 func (fr *FundRaiser) Validate() error {
