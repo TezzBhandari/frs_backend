@@ -17,6 +17,7 @@ func (s *Server) registerFundRaiserRoutes(r *mux.Router) {
 	r.HandleFunc("/fund-raiser", s.handleFindFundRaiser).Methods(http.MethodGet)
 	r.HandleFunc("/fund-raiser/{id}", s.handleFindFundRaiserById).Methods(http.MethodGet)
 	r.HandleFunc("/fund-raiser/{id}", s.handleDeleteFundRaiser).Methods(http.MethodDelete)
+	r.HandleFunc("/fund-raiser/{id}", s.handleUpdateFundRaiser).Methods(http.MethodPut)
 }
 
 func (s *Server) handleCreateFundRaiser(rw http.ResponseWriter, r *http.Request) {
@@ -98,4 +99,35 @@ func (s *Server) handleDeleteFundRaiser(rw http.ResponseWriter, r *http.Request)
 	}
 
 	rw.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleUpdateFundRaiser(rw http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	fundRaiserId, err := strconv.ParseInt(id, 0, 64)
+	if err != nil {
+		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidFundRaiserIdMsg()))
+		return
+	}
+
+	updFundRaiser := &frs.UpdateFundRaiser{}
+	if err := ReadJsonBody(r.Body, updFundRaiser); err != nil {
+		Error(rw, r, err)
+		return
+	}
+	updatedFundRaiser, err := s.FundRaiserService.UpdateFundRaiser(r.Context(), fundRaiserId, updFundRaiser)
+	if err != nil {
+		Error(rw, r, err)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(rw).Encode(SuccessResponse{
+		Data: map[string]any{
+			"fund-raiser": updatedFundRaiser,
+		},
+	}); err != nil {
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
+	}
+
 }

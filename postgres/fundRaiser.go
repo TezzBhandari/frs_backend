@@ -71,7 +71,41 @@ func (fr *FundRaiserService) FindFundRaiserById(ctx context.Context, id int64) (
 }
 
 func (fr *FundRaiserService) UpdateFundRaiser(ctx context.Context, id int64, updFundRaiser *frs.UpdateFundRaiser) (*frs.FundRaiser, error) {
-	return nil, nil
+	tx, err := fr.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	fundRaiser, err := findFundRaiserById(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if updFundRaiser.Title != nil {
+		fundRaiser.Title = *updFundRaiser.Title
+	}
+	if updFundRaiser.Story != nil {
+		fundRaiser.Story = *updFundRaiser.Story
+	}
+	if updFundRaiser.CoverImg != nil {
+		fundRaiser.CoverImg = *updFundRaiser.CoverImg
+	}
+	if updFundRaiser.TargetAmount != nil {
+		fundRaiser.TargetAmount = *updFundRaiser.TargetAmount
+	}
+
+	fundRaiser.UpdatedAt = tx.Now
+
+	fundRaiser, err = updateFundRaiser(ctx, tx, id, fundRaiser)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return fundRaiser, nil
 }
 
 func (fr *FundRaiserService) DeleteFundRaiser(ctx context.Context, id int64) error {
@@ -182,4 +216,18 @@ func deleteFundRaiser(ctx context.Context, tx *Tx, id int64) error {
 		return err
 	}
 	return nil
+}
+
+func updateFundRaiser(ctx context.Context, tx *Tx, id int64, fundRaiser *frs.FundRaiser) (*frs.FundRaiser, error) {
+	updateFundRaiserQuery := `
+	 UPDATE fundraisers
+	 SET title = $1, story = $2, cover_img = $3, target_amount = $4, updated_at = $5
+	 WHERE id = $6;`
+
+	_, err := tx.Exec(ctx, updateFundRaiserQuery, fundRaiser.Title, fundRaiser.Story, fundRaiser.CoverImg, fundRaiser.TargetAmount, fundRaiser.UpdatedAt, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return fundRaiser, nil
 }
