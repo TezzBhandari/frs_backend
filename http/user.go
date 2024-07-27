@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/TezzBhandari/frs"
+	"github.com/TezzBhandari/frs/utils"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
@@ -72,13 +73,13 @@ func (s *Server) handleFindUsers(rw http.ResponseWriter, r *http.Request) {
 		users = []*frs.User{}
 	}
 
-	err = json.NewEncoder(rw).Encode(SuccessMessage{
+	err = json.NewEncoder(rw).Encode(SuccessResponse{
 		Data: map[string]any{
 			"users": users,
 		},
 	})
 	if err != nil {
-		log.Error().Err(fmt.Errorf("failed to write response %w", err)).Msg("")
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 	}
 
 }
@@ -87,7 +88,7 @@ func (s *Server) handleFindUserById(rw http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	userId, err := strconv.ParseInt(id, 0, 64)
 	if err != nil {
-		Error(rw, r, frs.Errorf(frs.EINTERNAL, "invalid user id"))
+		Error(rw, r, frs.Errorf(frs.EINTERNAL, utils.InvalidUserIdMsg()))
 		return
 	}
 
@@ -99,13 +100,14 @@ func (s *Server) handleFindUserById(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(rw).Encode(SuccessMessage{
+	err = json.NewEncoder(rw).Encode(SuccessResponse{
 		Data: map[string]any{
 			"user": user,
 		},
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("failed to write response")
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
+
 	}
 }
 
@@ -113,7 +115,7 @@ func (s *Server) handleDeleteUser(rw http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	userId, err := strconv.ParseInt(id, 0, 64)
 	if err != nil {
-		Error(rw, r, frs.Errorf(frs.EINVALID, "invlaid user id"))
+		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidUserIdMsg()))
 		return
 	}
 
@@ -142,7 +144,7 @@ func (s *Server) handleUpdateUser(rw http.ResponseWriter, r *http.Request) {
 		case io.EOF:
 			break
 		default:
-			Error(rw, r, frs.Errorf(frs.EINVALID, "invalid json body"))
+			Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidJsonMsg()))
 			return
 		}
 	}
@@ -156,13 +158,13 @@ func (s *Server) handleUpdateUser(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(rw).Encode(SuccessMessage{
+	err = json.NewEncoder(rw).Encode(SuccessResponse{
 		Data: map[string]any{
 			"user": user,
 		},
 	})
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to write response")
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 	}
 }

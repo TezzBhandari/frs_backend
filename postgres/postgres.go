@@ -247,5 +247,5 @@ func formatLimitAndOffset(limit, offset int) string {
 	if offset > 0 {
 		return fmt.Sprintf("OFFSET %d", offset)
 	}
-	return ""
+	return "LIMIT 10"
 }

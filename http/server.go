@@ -82,9 +82,9 @@ func (s *Server) handleNotFound() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusNotFound)
-		err := json.NewEncoder(rw).Encode(ErrorMessage{Error: "path not found"})
+		err := json.NewEncoder(rw).Encode(ErrorResponse{Error: "path not found"})
 		if err != nil {
-			log.Error().Err(fmt.Errorf("failed to write response %w", err)).Msg("")
+			log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 		}
 	})
 }
@@ -123,23 +123,21 @@ func trackMetrics(next http.Handler) http.Handler {
 }
 
 func Error(rw http.ResponseWriter, r *http.Request, err error) {
-	log.Error().Err(err).Msg("")
-
 	errCode, errMessage := frs.ErrorCode(err), frs.ErrorMessage(err)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(ErrorStatusCode(errCode))
 
-	if err := json.NewEncoder(rw).Encode(ErrorMessage{Error: errMessage}); err != nil {
-		log.Error().Err(err).Msg("Failed to write response")
+	if err := json.NewEncoder(rw).Encode(ErrorResponse{Error: errMessage}); err != nil {
+		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 	}
 }
 
-type ErrorMessage struct {
+type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type SuccessMessage struct {
+type SuccessResponse struct {
 	Data map[string]any `json:"data"`
 }
 

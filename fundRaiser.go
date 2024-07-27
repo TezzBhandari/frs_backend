@@ -19,6 +19,9 @@ type FilterFundRaiser struct {
 	ID        *int64     `json:"id"`
 	Title     *string    `json:"title"`
 	CreatedAt *time.Time `json:"created_at"`
+
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
 }
 
 type UpdateFundRaiser struct {
