@@ -16,6 +16,7 @@ func (s *Server) registerFundRaiserRoutes(r *mux.Router) {
 	r.HandleFunc("/fund-raiser", s.handleCreateFundRaiser).Methods(http.MethodPost)
 	r.HandleFunc("/fund-raiser", s.handleFindFundRaiser).Methods(http.MethodGet)
 	r.HandleFunc("/fund-raiser/{id}", s.handleFindFundRaiserById).Methods(http.MethodGet)
+	r.HandleFunc("/fund-raiser/{id}", s.handleDeleteFundRaiser).Methods(http.MethodDelete)
 }
 
 func (s *Server) handleCreateFundRaiser(rw http.ResponseWriter, r *http.Request) {
@@ -62,12 +63,12 @@ func (s *Server) handleFindFundRaiser(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleFindFundRaiserById(rw http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	userId, err := strconv.ParseInt(id, 0, 64)
+	fundRaiserId, err := strconv.ParseInt(id, 0, 64)
 	if err != nil {
 		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidFundRaiserIdMsg()))
 		return
 	}
-	fundRaiser, err := s.FundRaiserService.FindFundRaiserById(r.Context(), userId)
+	fundRaiser, err := s.FundRaiserService.FindFundRaiserById(r.Context(), fundRaiserId)
 	if err != nil {
 		Error(rw, r, err)
 		return
@@ -81,4 +82,20 @@ func (s *Server) handleFindFundRaiserById(rw http.ResponseWriter, r *http.Reques
 	}); err != nil {
 		log.Error().Err(fmt.Errorf("%s %w", utils.FailedResponseMsg(), err)).Msg("")
 	}
+}
+
+func (s *Server) handleDeleteFundRaiser(rw http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	fundRaiserId, err := strconv.ParseInt(id, 0, 64)
+	if err != nil {
+		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidFundRaiserIdMsg()))
+		return
+	}
+	err = s.FundRaiserService.DeleteFundRaiser(r.Context(), fundRaiserId)
+	if err != nil {
+		Error(rw, r, err)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
 }

@@ -75,7 +75,15 @@ func (fr *FundRaiserService) UpdateFundRaiser(ctx context.Context, id int64, upd
 }
 
 func (fr *FundRaiserService) DeleteFundRaiser(ctx context.Context, id int64) error {
-	return nil
+	tx, err := fr.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err = deleteFundRaiser(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func createFundRaiser(ctx context.Context, tx *Tx, fundRaiser *frs.FundRaiser) error {
@@ -161,4 +169,17 @@ func findFundRaiserById(ctx context.Context, tx *Tx, id int64) (*frs.FundRaiser,
 	}
 
 	return fundRaiser[0], nil
+}
+
+func deleteFundRaiser(ctx context.Context, tx *Tx, id int64) error {
+	_, err := findFundRaiserById(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	deleteFundRaiserQuery := `DELETE FROM fundraisers WHERE id = $1;`
+	_, err = tx.Exec(ctx, deleteFundRaiserQuery, id)
+	if err != nil {
+		return err
+	}
+	return nil
 }
