@@ -69,10 +69,6 @@ func (s *Server) handleFindUsers(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 
-	if users == nil {
-		users = []*frs.User{}
-	}
-
 	err = json.NewEncoder(rw).Encode(SuccessResponse{
 		Data: map[string]any{
 			"users": users,

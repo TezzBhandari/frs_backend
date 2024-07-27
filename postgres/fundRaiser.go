@@ -48,7 +48,7 @@ func (fr *FundRaiserService) FindFundRaiser(ctx context.Context, filterFundRaise
 	}
 
 	defer tx.Rollback(ctx)
-	fundRaisers, n, err := findFundRaisers(ctx, tx, filterFundRaiser)
+	fundRaisers, n, err := findFundRaiser(ctx, tx, filterFundRaiser)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -86,7 +86,7 @@ func createFundRaiser(ctx context.Context, tx *Tx, fundRaiser *frs.FundRaiser) e
 	return nil
 }
 
-func findFundRaisers(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFundRaiser) ([]*frs.FundRaiser, int, error) {
+func findFundRaiser(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFundRaiser) ([]*frs.FundRaiser, int, error) {
 	where := []string{"1 = 1"}
 	args := []any{}
 	i := 1
@@ -111,12 +111,12 @@ func findFundRaisers(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFu
 	whereClause := strings.Join(where, " AND ")
 
 	findFundRaiserQuery := `
-		SELECT id, title, story, target_amount, cover_img, created_at, updated_at FROM fundraisers
+		SELECT id, title, story, target_amount, cover_img, created_at, updated_at FROM fundraisers WHERE
 	` + whereClause + `
 		ORDER BY created_at DESC
 	` + formatLimitAndOffset(filterFundRaiser.Limit, filterFundRaiser.Offset)
 
-	rows, err := tx.Query(ctx, findFundRaiserQuery, args)
+	rows, err := tx.Query(ctx, findFundRaiserQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -128,9 +128,7 @@ func findFundRaisers(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFu
 		if err := rows.Scan(&fundRaiser.ID, &fundRaiser.Title, &fundRaiser.Story, &fundRaiser.TargetAmount, &fundRaiser.CoverImg, &fundRaiser.CreatedAt, &fundRaiser.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
-
 		fundRaisers = append(fundRaisers, &fundRaiser)
-
 		if err := rows.Err(); err != nil {
 			return nil, 0, err
 		}

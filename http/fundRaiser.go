@@ -13,7 +13,7 @@ import (
 
 func (s *Server) registerFundRaiserRoutes(r *mux.Router) {
 	r.HandleFunc("/fund-raiser", s.handleCreateFundRaiser).Methods(http.MethodPost)
-	r.HandleFunc("/fund-raiser", s.handleFindFundRaisers).Methods(http.MethodGet)
+	r.HandleFunc("/fund-raiser", s.handleFindFundRaiser).Methods(http.MethodGet)
 }
 
 func (s *Server) handleCreateFundRaiser(rw http.ResponseWriter, r *http.Request) {
@@ -32,7 +32,7 @@ func (s *Server) handleCreateFundRaiser(rw http.ResponseWriter, r *http.Request)
 	rw.WriteHeader(http.StatusCreated)
 }
 
-func (s *Server) handleFindFundRaisers(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) handleFindFundRaiser(rw http.ResponseWriter, r *http.Request) {
 	filterFundRaiser := &frs.FilterFundRaiser{}
 	if err := ReadJsonBody(r.Body, filterFundRaiser); err != nil {
 		Error(rw, r, err)

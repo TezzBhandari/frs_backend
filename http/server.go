@@ -123,6 +123,8 @@ func trackMetrics(next http.Handler) http.Handler {
 }
 
 func Error(rw http.ResponseWriter, r *http.Request, err error) {
+
+	log.Error().Err(err).Msg("")
 	errCode, errMessage := frs.ErrorCode(err), frs.ErrorMessage(err)
 
 	rw.Header().Set("Content-Type", "application/json")

@@ -181,7 +181,7 @@ func findUsers(ctx context.Context, tx *Tx, filterUser *frs.FilterUser) ([]*frs.
 
 	defer rows.Close()
 
-	var users []*frs.User
+	users := make([]*frs.User, 0)
 
 	for rows.Next() {
 		var user frs.User
