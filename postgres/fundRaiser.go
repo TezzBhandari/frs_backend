@@ -63,7 +63,6 @@ func (fr *FundRaiserService) FindFundRaiserById(ctx context.Context, id int64) (
 	}
 
 	defer tx.Rollback(ctx)
-	log.Debug().Bool("hi ", true).Msg("")
 	fundRaiser, err := findFundRaiserById(ctx, tx, id)
 	if err != nil {
 		return nil, err
@@ -152,12 +151,8 @@ func findFundRaiser(ctx context.Context, tx *Tx, filterFundRaiser *frs.FilterFun
 }
 
 func findFundRaiserById(ctx context.Context, tx *Tx, id int64) (*frs.FundRaiser, error) {
-	log.Debug().Str("hey", "hey hey").Msg("")
-
 	fundRaiser, n, err := findFundRaiser(ctx, tx, &frs.FilterFundRaiser{ID: &id})
-	log.Debug().Bool("no err", true)
 	if err != nil {
-		log.Error().Err(err).Msg("erro while executing query")
 		return nil, err
 	}
 

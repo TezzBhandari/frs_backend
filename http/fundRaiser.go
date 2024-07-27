@@ -67,11 +67,7 @@ func (s *Server) handleFindFundRaiserById(rw http.ResponseWriter, r *http.Reques
 		Error(rw, r, frs.Errorf(frs.EINVALID, utils.InvalidFundRaiserIdMsg()))
 		return
 	}
-
-	log.Debug().Msg("about to fetch fund rainser")
-
 	fundRaiser, err := s.FundRaiserService.FindFundRaiserById(r.Context(), userId)
-	log.Debug().Any("fund-raiser", fundRaiser).Msg("")
 	if err != nil {
 		Error(rw, r, err)
 		return
